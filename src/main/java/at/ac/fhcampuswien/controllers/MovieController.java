@@ -19,11 +19,11 @@ public class MovieController implements HttpHandler {
 
         // Route based on the path
         switch (path) {
-            //case BASE -> handleBaseRequest(method, exchange);
-            //case BASE + "getAll" -> handleGetAllRequest(method, exchange);
-            //case BASE + "add" -> handleAddRequest(method, exchange);
-            //case BASE + "delete" -> handleDeleteRequest(method, exchange);
-            //case BASE + "update" -> handleUpdateRequest(method, exchange);
+            // case BASE -> handleBaseRequest(method, exchange);
+            // case BASE + "getAll" -> handleGetAllRequest(method, exchange);
+            // case BASE + "add" -> handleAddRequest(method, exchange);
+            // case BASE + "delete" -> handleDeleteRequest(method, exchange);
+            // case BASE + "update" -> handleUpdateRequest(method, exchange);
             default -> {
                 // Path not found
                 String response = "{ \"error\": \"Path not found\" }";
