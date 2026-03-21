@@ -43,10 +43,6 @@ public class Movie {
             movies.add(new Movie(titles[i], genres[i / 2], new Random().nextInt(1960, 2026)));
         }
 
-        for (Movie movie : movies) {
-            System.out.println(movie);
-        }
-
         return movies;
     }
 
@@ -55,21 +51,38 @@ public class Movie {
         return "Movie{id=" + id + ", title='" + title + "', genre='" + genre + "', releaseYear=" + releaseYear + "}";
     }
 
-    //getters
-    UUID getID() {
+    // Getters
+    public UUID getID() {
         return id;
     }
 
-    String getTitle() {
+    public String getTitle() {
         return title;
     }
 
-    String getGenre() {
+    public String getGenre() {
         return genre;
     }
 
-    int getReleaseYear() {
+    public int getReleaseYear() {
         return releaseYear;
+    }
+
+    // Setters
+    public void setID(UUID id) {
+        this.id = id;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public void setGenre(String genre) {
+        this.genre = genre;
+    }
+
+    public void setReleaseYear(int releaseYear) {
+        this.releaseYear = releaseYear;
     }
 
 }
