@@ -27,13 +27,66 @@ public class MovieController implements HttpHandler {
         switch (path) {
             // case BASE -> handleBaseRequest(method, exchange);
             // case BASE + "getAll" -> handleGetAllRequest(method, exchange);
-            // case BASE + "add" -> handleAddRequest(method, exchange);
+            case BASE + "add" -> handleAddRequest(method, exchange);
             // case BASE + "delete" -> handleDeleteRequest(method, exchange);
             case BASE + "update" -> handleUpdateRequest(method, exchange);
             default -> {
                 // Path not found
                 String response = "{ \"error\": \"Path not found\" }";
                 ApiUtils.sendResponse(exchange, 404, response);
+            }
+        }
+    }
+
+    private void handleAddRequest(String method, HttpExchange exchange) throws IOException {
+
+        // Add a movie through the request body
+        switch (method) {
+            case "POST" -> {
+                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);                //Receiving the data
+                boolean movieExists = false;                                                                                      //Logic for 400 Bad Request
+                boolean hasTitle = requestBody.matches("(?s).*\"title\"\\s*:\\s*\".*?\".*");                                //Logic for 400 Bad Request
+                boolean hasGenre = requestBody.matches("(?s).*\"genre\"\\s*:\\s*\".*?\".*");                                //Logic for 400 Bad Request
+                boolean hasYear  = requestBody.matches("(?s).*\"releaseYear\"\\s*:\\s*\\d+.*");                             //Logic for 400 Bad Request
+                if(!hasTitle || !hasGenre || !hasYear) {
+                    String response = "{ \"message\": \"The request body is malformed or invalid movie data is provided\" }";     //400 Bad Request Response for malformed format
+                    ApiUtils.sendResponse(exchange, 400, response);
+                    return;
+                }
+                String title = requestBody.split("(?i)\"title\"\\s*:\\s*\"")[1].split("\"")[0];                       //Extract title
+                String genre = requestBody.split("(?i)\"genre\"\\s*:\\s*\"")[1].split("\"")[0];                       //Extract genre
+                int releaseYear;
+                try{
+                    releaseYear = Integer.parseInt(
+                            requestBody.split("\"releaseYear\"\\s*:\\s*")[1].split("[,}]")[0].trim()                 //Extract releaseYear
+                    );
+                } catch (NumberFormatException e) {
+                    String response = "{ \"message:\": \"The request body is malformed or invalid movie data is provided\"";     //400 Bad Request Response for wrong format
+                    ApiUtils.sendResponse(exchange, 400, response);
+                    return;
+                }
+                for (Movie movie : movies) {
+                    if (movie.getTitle().equals(title) &&
+                            movie.getGenre().equals(genre) &&
+                            movie.getReleaseYear() == releaseYear) {
+                        movieExists = true;
+                        break;
+                    }
+                }
+                if (movieExists) {
+                    String response = "{ \"message:\": \"Movie already exists\" }";                                         // Response if movie exists
+                    ApiUtils.sendResponse(exchange, 400, response);
+                }else{
+                    movies.add(new Movie(title, genre, releaseYear));                                                       //Add a movie if checks before were OK
+                    String response = "{ \"message:\": \"Movie added successfully\" }";
+
+                    System.out.println(movies);
+                    ApiUtils.sendResponse(exchange, 201, response);
+                }
+            }
+            default -> {
+                String response = "{ \"error\": \"Method not allowed\" }";
+                ApiUtils.sendResponse(exchange, 405, response);
             }
         }
     }
