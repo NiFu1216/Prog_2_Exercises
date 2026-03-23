@@ -52,7 +52,7 @@ public class Movie {
     }
 
     // Getters
-    public UUID getID() {
+    public UUID getId() {
         return id;
     }
 
