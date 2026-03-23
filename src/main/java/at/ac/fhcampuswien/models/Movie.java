@@ -56,19 +56,19 @@ public class Movie {
     }
 
     //getters
-    UUID getID() {
+    public UUID getID() {
         return id;
     }
 
-    String getTitle() {
+    public String getTitle() {
         return title;
     }
 
-    String getGenre() {
+    public String getGenre() {
         return genre;
     }
 
-    int getReleaseYear() {
+    public int getReleaseYear() {
         return releaseYear;
     }
 
