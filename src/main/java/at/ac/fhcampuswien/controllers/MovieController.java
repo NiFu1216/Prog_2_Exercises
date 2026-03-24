@@ -7,7 +7,6 @@ import com.sun.net.httpserver.HttpHandler;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Iterator;
 import java.util.List;
 
 public class MovieController implements HttpHandler {
@@ -54,8 +53,8 @@ public class MovieController implements HttpHandler {
                     ApiUtils.sendResponse(exchange, 400, response);
                     return;
                 }
-                String title = requestBody.split("(?i)\"title\"\\s*:\\s*\"")[1].split("\"")[0];                       //Extract title
-                String genre = requestBody.split("(?i)\"genre\"\\s*:\\s*\"")[1].split("\"")[0];                       //Extract genre
+                String title = requestBody.split("(?s)\"title\"\\s*:\\s*\"")[1].split("\"")[0];                       //Extract title
+                String genre = requestBody.split("(?s)\"genre\"\\s*:\\s*\"")[1].split("\"")[0];                       //Extract genre
                 int releaseYear;
                 try{
                     releaseYear = Integer.parseInt(
@@ -81,7 +80,7 @@ public class MovieController implements HttpHandler {
                     movies.add(new Movie(title, genre, releaseYear));                                                       //Add a movie if checks before were OK
                     String response = "{ \"message:\": \"Movie added successfully\" }";
 
-                    System.out.println(movies);
+                    // System.out.println(movies);
                     ApiUtils.sendResponse(exchange, 201, response);
                 }
             }
@@ -122,9 +121,9 @@ public class MovieController implements HttpHandler {
                 String genre = requestBody.substring(startGenreKey, endGenreKey);
 
                 // Get the releaseYear
-                String releaseYearKey = "\"releaseYear\": \"";
+                String releaseYearKey = "\"releaseYear\": ";
                 int startReleaseYearKey = requestBody.indexOf(releaseYearKey) + releaseYearKey.length();
-                int endReleaseYearKey = requestBody.indexOf("\"", startReleaseYearKey);
+                int endReleaseYearKey = requestBody.indexOf("}", startReleaseYearKey);
                 String releaseYear = requestBody.substring(startReleaseYearKey, endReleaseYearKey);
 
                 // Check if request body is malformed or if invalid movie data is provided
@@ -136,7 +135,7 @@ public class MovieController implements HttpHandler {
                         (ID.length() != 36)
                 ) {
                     // Response
-                    String response = "{ \"message:\": \"The request body is malformed or invalid movie data is provided\"";
+                    String response = "{ \"message:\": \"The request body is malformed or invalid movie data is provided\" }";
                     ApiUtils.sendResponse(exchange, 400, response);
                     return;
                 } else {
@@ -144,7 +143,7 @@ public class MovieController implements HttpHandler {
                         releaseYearAsInt = Integer.parseInt(releaseYear.trim());
                     } catch (NumberFormatException e) {
                         // Response
-                        String response = "{ \"message:\": \"The request body is malformed or invalid movie data is provided\"";
+                        String response = "{ \"message:\": \"The request body is malformed or invalid movie data is provided\" }";
                         ApiUtils.sendResponse(exchange, 400, response);
                         return;
                     }
@@ -162,13 +161,13 @@ public class MovieController implements HttpHandler {
 
                 if (!movieFound) {
                     // Response if movie was not found
-                    String response = "{ \"message:\": \"Movie to be updated not found\"";
+                    String response = "{ \"message:\": \"Movie to be updated not found\" }";
                     ApiUtils.sendResponse(exchange, 404, response);
                     return;
                 }
 
                 // Response if movie was found
-                String response = "{ \"message:\": \"Movie updated successfully\"";
+                String response = "{ \"message:\": \"Movie updated successfully\" }";
                 ApiUtils.sendResponse(exchange, 200, response);
 
             }
@@ -182,7 +181,7 @@ public class MovieController implements HttpHandler {
 
         switch (method) {
             case "GET" -> {
-                StringBuilder response = new StringBuilder("[");
+                StringBuilder response = new StringBuilder("{ \"movies\": [");
                 for (int i = 0; i < movies.size(); i++) {
                     Movie movie = movies.get(i);
                     response.append("{")
@@ -196,7 +195,7 @@ public class MovieController implements HttpHandler {
                         response.append(",");
                     }
                 }
-                response.append("]");
+                response.append("]}");
 
                 ApiUtils.sendResponse(exchange, 200, response.toString());
             }
@@ -223,8 +222,8 @@ public class MovieController implements HttpHandler {
                     return;
                 }
 
-                String title = requestBody.split("(?i)\"title\"\\s*:\\s*\"")[1].split("\"")[0];
-                String genre = requestBody.split("(?i)\"genre\"\\s*:\\s*\"")[1].split("\"")[0];
+                String title = requestBody.split("(?s)\"title\"\\s*:\\s*\"")[1].split("\"")[0];
+                String genre = requestBody.split("(?s)\"genre\"\\s*:\\s*\"")[1].split("\"")[0];
 
                 int releaseYear;
                 try {
@@ -237,15 +236,12 @@ public class MovieController implements HttpHandler {
                     return;
                 }
 
-                Iterator<Movie> iterator = movies.iterator();
-                while (iterator.hasNext()) {
-                    Movie movie = iterator.next();
-                    if (movie.getTitle().equals(title)
-                            && movie.getGenre().equals(genre)
-                            && movie.getReleaseYear() == releaseYear) {
-                        iterator.remove();
-
-                        String response = "{ \"message\": \"Movie deleted successfully\" }";
+                for (Movie movie : movies) {
+                    if (movie.getTitle().equals(title) &&
+                            movie.getGenre().equals(genre) &&
+                            movie.getReleaseYear() == releaseYear) {
+                        movies.remove(movie);
+                        String response = "{ \"message:\": \"Movie deleted successfully\" }";                                         // Response if movie exists
                         ApiUtils.sendResponse(exchange, 200, response);
                         return;
                     }
@@ -260,5 +256,4 @@ public class MovieController implements HttpHandler {
             }
         }
     }
-
 }
