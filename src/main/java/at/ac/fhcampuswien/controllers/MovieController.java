@@ -7,6 +7,7 @@ import com.sun.net.httpserver.HttpHandler;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
 import java.util.List;
 
 public class MovieController implements HttpHandler {
@@ -25,10 +26,10 @@ public class MovieController implements HttpHandler {
 
         // Route based on the path
         switch (path) {
-            // case BASE -> handleBaseRequest(method, exchange);
-            // case BASE + "getAll" -> handleGetAllRequest(method, exchange);
+            //case BASE -> handleBaseRequest(method, exchange);
+            case BASE + "getAll" -> handleGetAllRequest(method, exchange);
             case BASE + "add" -> handleAddRequest(method, exchange);
-            // case BASE + "delete" -> handleDeleteRequest(method, exchange);
+            case BASE + "delete" -> handleDeleteRequest(method, exchange);
             case BASE + "update" -> handleUpdateRequest(method, exchange);
             default -> {
                 // Path not found
@@ -151,7 +152,7 @@ public class MovieController implements HttpHandler {
 
                 // Update the movie
                 for (Movie movie : movies) {
-                    if ((movie.getID().toString()).equals(ID)) {
+                    if ((movie.getId().toString()).equals(ID)) {
                         movieFound = true;
                         movie.setTitle(title);
                         movie.setGenre(genre);
@@ -177,4 +178,87 @@ public class MovieController implements HttpHandler {
             }
         }
     }
+    private void handleGetAllRequest(String method, HttpExchange exchange) throws IOException {
+
+        switch (method) {
+            case "GET" -> {
+                StringBuilder response = new StringBuilder("[");
+                for (int i = 0; i < movies.size(); i++) {
+                    Movie movie = movies.get(i);
+                    response.append("{")
+                            .append("\"id\":\"").append(movie.getId()).append("\",")
+                            .append("\"title\":\"").append(movie.getTitle()).append("\",")
+                            .append("\"genre\":\"").append(movie.getGenre()).append("\",")
+                            .append("\"releaseYear\":").append(movie.getReleaseYear())
+                            .append("}");
+
+                    if (i < movies.size() - 1) {
+                        response.append(",");
+                    }
+                }
+                response.append("]");
+
+                ApiUtils.sendResponse(exchange, 200, response.toString());
+            }
+            default -> {
+                String response = "{ \"error\": \"Method not allowed\" }";
+                ApiUtils.sendResponse(exchange, 405, response);
+            }
+        }
+    }
+
+    private void handleDeleteRequest(String method, HttpExchange exchange) throws IOException {
+
+        switch (method) {
+            case "DELETE" -> {
+                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+
+                boolean hasTitle = requestBody.matches("(?s).*\"title\"\\s*:\\s*\".*?\".*");
+                boolean hasGenre = requestBody.matches("(?s).*\"genre\"\\s*:\\s*\".*?\".*");
+                boolean hasYear  = requestBody.matches("(?s).*\"releaseYear\"\\s*:\\s*\\d+.*");
+
+                if (!hasTitle || !hasGenre || !hasYear) {
+                    String response = "{ \"message\": \"The request body is malformed or invalid movie data is provided\" }";
+                    ApiUtils.sendResponse(exchange, 400, response);
+                    return;
+                }
+
+                String title = requestBody.split("(?i)\"title\"\\s*:\\s*\"")[1].split("\"")[0];
+                String genre = requestBody.split("(?i)\"genre\"\\s*:\\s*\"")[1].split("\"")[0];
+
+                int releaseYear;
+                try {
+                    releaseYear = Integer.parseInt(
+                            requestBody.split("\"releaseYear\"\\s*:\\s*")[1].split("[,}]")[0].trim()
+                    );
+                } catch (NumberFormatException e) {
+                    String response = "{ \"message\": \"The request body is malformed or invalid movie data is provided\" }";
+                    ApiUtils.sendResponse(exchange, 400, response);
+                    return;
+                }
+
+                Iterator<Movie> iterator = movies.iterator();
+                while (iterator.hasNext()) {
+                    Movie movie = iterator.next();
+                    if (movie.getTitle().equals(title)
+                            && movie.getGenre().equals(genre)
+                            && movie.getReleaseYear() == releaseYear) {
+                        iterator.remove();
+
+                        String response = "{ \"message\": \"Movie deleted successfully\" }";
+                        ApiUtils.sendResponse(exchange, 200, response);
+                        return;
+                    }
+                }
+
+                String response = "{ \"message\": \"Movie not found\" }";
+                ApiUtils.sendResponse(exchange, 404, response);
+            }
+            default -> {
+                String response = "{ \"error\": \"Method not allowed\" }";
+                ApiUtils.sendResponse(exchange, 405, response);
+            }
+        }
+    }
+
 }
