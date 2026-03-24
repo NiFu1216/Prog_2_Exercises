@@ -37,7 +37,7 @@ public class Movie {
                 "Bazinga", "The final exam", "2AM study session","Major decisions, minor regrets"};
 
         String[] genres = {"Action", "Drama", "Sci-Fi", "Comedy",
-                "Thriller", "Horror", "Fantasy", "Adventure", "Romance", "Gay"};
+                "Thriller", "Horror", "Fantasy", "Adventure", "Romance", "Anime"};
 
         for (int i = 0; i < titles.length; i++) {
             movies.add(new Movie(titles[i], genres[i / 2], new Random().nextInt(1960, 2026)));
