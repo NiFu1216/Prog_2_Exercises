@@ -17,7 +17,7 @@ class MovieServiceTest {
 
     private Movie matrix;
     private Movie inception;
-    private Movie interstellar;
+    private Movie grown_ups;
     private Movie avatar;
 
     @BeforeEach
@@ -26,12 +26,12 @@ class MovieServiceTest {
 
         matrix = new Movie("The Matrix", "Sci-Fi", 1999);
         inception = new Movie("Inception", "Sci-Fi", 2010);
-        interstellar = new Movie("Interstellar", "Sci-Fi", 2014);
+        grown_ups = new Movie("Grown Ups", "Comedy", 2010);
         avatar = new Movie("Avatar", "Action", 2009);
 
         movies.add(matrix);
         movies.add(inception);
-        movies.add(interstellar);
+        movies.add(grown_ups);
         movies.add(avatar);
 
         movieService = new MovieService(movies);
@@ -42,6 +42,18 @@ class MovieServiceTest {
     // -------------------------
 
     @Test
+    @DisplayName("Given no movies exist When getAllMovies is called Then no movies are returned")
+    void givenNoMoviesExist_whenGetAllMovies_thenReturnNoMovies() {
+        List<Movie> result = movieService.getAllMovies();
+        while (!result.isEmpty()) {
+            result.remove(0);
+        }
+
+        assertEquals(0, result.size());
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
     @DisplayName("Given movies exist When getAllMovies is called Then all movies are returned")
     void givenMoviesExist_whenGetAllMovies_thenReturnAllMovies() {
         List<Movie> result = movieService.getAllMovies();
@@ -49,7 +61,7 @@ class MovieServiceTest {
         assertEquals(4, result.size());
         assertTrue(result.contains(matrix));
         assertTrue(result.contains(inception));
-        assertTrue(result.contains(interstellar));
+        assertTrue(result.contains(grown_ups));
         assertTrue(result.contains(avatar));
     }
 
@@ -63,6 +75,10 @@ class MovieServiceTest {
         List<Movie> result = movieService.searchMovies(null, null, null);
 
         assertEquals(4, result.size());
+        assertTrue(result.contains(matrix));
+        assertTrue(result.contains(inception));
+        assertTrue(result.contains(grown_ups));
+        assertTrue(result.contains(avatar));
     }
 
     @Test
@@ -77,10 +93,10 @@ class MovieServiceTest {
     @Test
     @DisplayName("Given partial title When searchMovies is called Then matching movies are returned")
     void givenPartialTitle_whenSearchMovies_thenReturnMatchingMovies() {
-        List<Movie> result = movieService.searchMovies("Inter", null, null);
+        List<Movie> result = movieService.searchMovies("Grow", null, null);
 
         assertEquals(1, result.size());
-        assertEquals("Interstellar", result.get(0).getTitle());
+        assertEquals("Grown Ups", result.get(0).getTitle());
     }
 
     @Test
@@ -97,7 +113,9 @@ class MovieServiceTest {
     void givenGenreFilter_whenSearchMovies_thenReturnMatchingGenreMovies() {
         List<Movie> result = movieService.searchMovies(null, "Sci-Fi", null);
 
-        assertEquals(3, result.size());
+        assertEquals(2, result.size());
+        assertTrue(result.contains(matrix));
+        assertTrue(result.contains(inception));
     }
 
     @Test
@@ -105,7 +123,9 @@ class MovieServiceTest {
     void givenPartialGenre_whenSearchMovies_thenReturnMatchingGenreMovies() {
         List<Movie> result = movieService.searchMovies(null, "Sci", null);
 
-        assertEquals(3, result.size());
+        assertEquals(2, result.size());
+        assertTrue(result.contains(matrix));
+        assertTrue(result.contains(inception));
     }
 
     @Test
@@ -113,8 +133,9 @@ class MovieServiceTest {
     void givenReleaseYear_whenSearchMovies_thenReturnMatchingYearMovies() {
         List<Movie> result = movieService.searchMovies(null, null, 2010);
 
-        assertEquals(1, result.size());
-        assertEquals("Inception", result.get(0).getTitle());
+        assertEquals(2, result.size());
+        assertTrue(result.contains(inception));
+        assertTrue(result.contains(grown_ups));
     }
 
     @Test
@@ -173,6 +194,17 @@ class MovieServiceTest {
     }
 
     @Test
+    @DisplayName("Given same title but different genre When addMovie is called Then movie is not added")
+    void givenSameTitleButDifferentGenre_whenAddMovie_thenMovieIsNotAdded() {
+        Movie sequel = new Movie("The Matrix", "Comedy", 1999);
+
+        boolean result = movieService.addMovie(sequel);
+
+        assertFalse(result);
+        assertEquals(4, movieService.getAllMovies().size());
+    }
+
+    @Test
     @DisplayName("Given same title with different casing When addMovie is called Then duplicate is rejected")
     void givenSameTitleDifferentCasing_whenAddMovie_thenDuplicateIsRejected() {
         Movie duplicate = new Movie("the matrix", "Sci-Fi", 1999);
@@ -212,6 +244,33 @@ class MovieServiceTest {
 
         assertTrue(result);
         assertEquals(3, movieService.getAllMovies().size());
+    }
+
+    @Test
+    @DisplayName("Given same title and releaseYear but different genre When deleteMovie is called Then false is returned")
+    void givenSameTitleAndReleaseYearButDifferentGenre_whenDeleteMovie_thenReturnFalse() {
+        boolean result = movieService.deleteMovie("Avatar", "Comedy", 2009);
+
+        assertFalse(result);
+        assertEquals(4, movieService.getAllMovies().size());
+    }
+
+    @Test
+    @DisplayName("Given same title and genre but different releaseYear When deleteMovie is called Then false is returned")
+    void givenSameTitleAndGenreButDifferentReleaseYear_whenDeleteMovie_thenReturnFalse() {
+        boolean result = movieService.deleteMovie("Avatar", "Action", 2010);
+
+        assertFalse(result);
+        assertEquals(4, movieService.getAllMovies().size());
+    }
+
+    @Test
+    @DisplayName("Given same genre and releaseYear but different title When deleteMovie is called Then false is returned")
+    void givenSameTitleButDifferentGenre_whenDeleteMovie_thenReturnFalse() {
+        boolean result = movieService.deleteMovie("Avatar 2", "Action", 2009);
+
+        assertFalse(result);
+        assertEquals(4, movieService.getAllMovies().size());
     }
 
     // -------------------------

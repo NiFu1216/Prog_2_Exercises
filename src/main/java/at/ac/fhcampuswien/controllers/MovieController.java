@@ -5,6 +5,7 @@ import at.ac.fhcampuswien.models.Movie;
 import at.ac.fhcampuswien.services.MovieService;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import com.google.gson.Gson;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +16,7 @@ public class MovieController implements HttpHandler {
 
     private final MovieService movieService;
     private final String BASE = "/api/movies/";
+    private final Gson gson = new Gson();
 
     public MovieController() {
         // Initialisierung des Services mit Dummy-Daten
@@ -52,38 +54,63 @@ public class MovieController implements HttpHandler {
 
     private void handleAddRequest(HttpExchange exchange) throws IOException {
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-        ParsedMovieData data = parseMovieData(body);
 
-        if (data == null) {
+        try {
+            Movie movie = gson.fromJson(body, Movie.class);
+
+            if (movie == null || movie.getTitle() == null || movie.getGenre() == null || movie.getReleaseYear() <= 0) {
+                ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"The request body is malformed\" }");
+                return;
+            }
+
+            if (movieService.addMovie(new Movie(movie.getTitle(), movie.getGenre(), movie.getReleaseYear()))) {
+                ApiUtils.sendResponse(exchange, 201, "{ \"message\": \"Movie added successfully\" }");
+            } else {
+                ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"Movie already exists\" }");
+            }
+        } catch (Exception e) {
             ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"The request body is malformed\" }");
-            return;
-        }
-
-        if (movieService.addMovie(new Movie(data.title, data.genre, data.releaseYear))) {
-            ApiUtils.sendResponse(exchange, 201, "{ \"message\": \"Movie added successfully\" }");
-        } else {
-            ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"Movie already exists\" }");
         }
     }
 
     private void handleDeleteRequest(HttpExchange exchange) throws IOException {
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-        ParsedMovieData data = parseMovieData(body);
 
-        if (data != null && movieService.deleteMovie(data.title, data.genre, data.releaseYear)) {
-            ApiUtils.sendResponse(exchange, 200, "{ \"message\": \"Movie deleted successfully\" }");
-        } else {
+        try {
+            Movie movie = gson.fromJson(body, Movie.class);
+
+            if (movie == null || movie.getTitle() == null || movie.getGenre() == null || movie.getReleaseYear() <= 0) {
+                ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie not found\" }");
+                return;
+            }
+
+            if (movieService.deleteMovie(movie.getTitle(), movie.getGenre(), movie.getReleaseYear())) {
+                ApiUtils.sendResponse(exchange, 200, "{ \"message\": \"Movie deleted successfully\" }");
+            } else {
+                ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie not found\" }");
+            }
+        } catch (Exception e) {
             ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie not found\" }");
         }
     }
 
     private void handleUpdateRequest(HttpExchange exchange) throws IOException {
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-        ParsedMovieData data = parseMovieDataWithId(body);
 
-        if (data != null && movieService.updateMovie(data.id, data.title, data.genre, data.releaseYear)) {
-            ApiUtils.sendResponse(exchange, 200, "{ \"message\": \"Movie updated successfully\" }");
-        } else {
+        try {
+            Movie movie = gson.fromJson(body, Movie.class);
+
+            if (movie == null || movie.getId() == null || movie.getTitle() == null || movie.getGenre() == null || movie.getReleaseYear() <= 0) {
+                ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie to be updated not found\" }");
+                return;
+            }
+
+            if (movieService.updateMovie(movie.getId().toString(), movie.getTitle(), movie.getGenre(), movie.getReleaseYear())) {
+                ApiUtils.sendResponse(exchange, 200, "{ \"message\": \"Movie updated successfully\" }");
+            } else {
+                ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie to be updated not found\" }");
+            }
+        } catch (Exception e) {
             ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie to be updated not found\" }");
         }
     }
@@ -91,15 +118,7 @@ public class MovieController implements HttpHandler {
     // --- Hilfsmethoden für Parsing und JSON-Formatierung ---
 
     private String formatMovieResponse(List<Movie> movieList) {
-        StringBuilder sb = new StringBuilder("{ \"movies\": [");
-        for (int i = 0; i < movieList.size(); i++) {
-            Movie m = movieList.get(i);
-            sb.append(String.format("{\"id\":\"%s\",\"title\":\"%s\",\"genre\":\"%s\",\"releaseYear\":%d}",
-                    m.getId(), m.getTitle(), m.getGenre(), m.getReleaseYear()));
-            if (i < movieList.size() - 1) sb.append(",");
-        }
-        sb.append("]}");
-        return sb.toString();
+        return gson.toJson(Map.of("movies", movieList));
     }
 
     private void handleMethod(String actual, String expected, HttpExchange ex, RequestAction action) throws IOException {
@@ -110,36 +129,6 @@ public class MovieController implements HttpHandler {
         action.execute();
     }
 
-    private ParsedMovieData parseMovieData(String json) {
-        String title = extractValue(json, "title");
-        String genre = extractValue(json, "genre");
-        Integer year = extractInt(json, "releaseYear");
-        return (title != null && genre != null && year != null) ? new ParsedMovieData(null, title, genre, year) : null;
-    }
-
-    private ParsedMovieData parseMovieDataWithId(String json) {
-        String id = extractValue(json, "id");
-        ParsedMovieData data = parseMovieData(json);
-        return (id != null && data != null) ? new ParsedMovieData(id, data.title, data.genre, data.releaseYear) : null;
-    }
-
-    private String extractValue(String json, String key) {
-        String pattern = "\"" + key + "\"\\s*:\\s*\"";
-        if (!json.contains(pattern)) return null;
-        return json.split(pattern)[1].split("\"")[0];
-    }
-
-    private Integer extractInt(String json, String key) {
-        String pattern = "\"" + key + "\"\\s*:\\s*";
-        if (!json.contains(pattern)) return null;
-        try {
-            return Integer.parseInt(json.split(pattern)[1].split("[,}]")[0].trim());
-        } catch (Exception e) { return null; }
-    }
-
     @FunctionalInterface private interface RequestAction { void execute() throws IOException; }
-    private static class ParsedMovieData {
-        String id, title, genre; int releaseYear;
-        ParsedMovieData(String i, String t, String g, int y) { id=i; title=t; genre=g; releaseYear=y; }
-    }
+
 }
