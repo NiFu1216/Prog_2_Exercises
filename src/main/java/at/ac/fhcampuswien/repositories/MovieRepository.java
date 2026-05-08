@@ -93,7 +93,7 @@ public class MovieRepository {
 
         try (
                 Connection connection = DatabaseUtil.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)
                 ) {
 
             preparedStatement.setString(1, movie.getTitle());
