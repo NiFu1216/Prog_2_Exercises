@@ -34,7 +34,7 @@ class MovieServiceTest {
         movies.add(grown_ups);
         movies.add(avatar);
 
-        movieService = new MovieService(movies);
+//        movieService = new MovieService(movies);
     }
 
     // -------------------------

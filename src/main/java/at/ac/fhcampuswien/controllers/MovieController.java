@@ -2,6 +2,7 @@ package at.ac.fhcampuswien.controllers;
 
 import at.ac.fhcampuswien.ApiUtils;
 import at.ac.fhcampuswien.models.Movie;
+import at.ac.fhcampuswien.repositories.MovieRepository;
 import at.ac.fhcampuswien.services.MovieService;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -19,8 +20,7 @@ public class MovieController implements HttpHandler {
     private final Gson gson = new Gson();
 
     public MovieController() {
-        // Initialisierung des Services mit Dummy-Daten
-        this.movieService = new MovieService(Movie.generateDummyMovies());
+        this.movieService = new MovieService(new MovieRepository());
     }
 
     @Override
