@@ -1,5 +1,7 @@
 package at.ac.fhcampuswien.repositories;
 
+import at.ac.fhcampuswien.exceptions.DatabaseException;
+import at.ac.fhcampuswien.exceptions.MovieNotFoundException;
 import at.ac.fhcampuswien.models.Movie;
 import at.ac.fhcampuswien.utils.DatabaseUtil;
 
@@ -13,7 +15,7 @@ import java.util.UUID;
 
 public class MovieRepository {
 
-    public void add(Movie movie) {
+    public void add(Movie movie) throws DatabaseException {
 
         String sql = "INSERT INTO movies (id, title, genre, release_year) VALUES (?, ?, ?, ?);";
 
@@ -29,11 +31,11 @@ public class MovieRepository {
             preparedStatement.executeUpdate();
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new DatabaseException("Failed to add movie", e);
         }
     }
 
-    public List<Movie> findAll() {
+    public List<Movie> findAll() throws DatabaseException {
 
         List<Movie> movies = new ArrayList<>();
 
@@ -43,7 +45,7 @@ public class MovieRepository {
                 Connection connection = DatabaseUtil.getConnection();
                 PreparedStatement preparedStatement = connection.prepareStatement(sql);
                 ResultSet resultSet = preparedStatement.executeQuery()
-                ) {
+        ) {
 
             while (resultSet.next()) {
                 Movie movie = new Movie();
@@ -57,20 +59,20 @@ public class MovieRepository {
             }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new DatabaseException("Failed to retrieve movies", e);
         }
 
         return movies;
     }
 
-    public boolean delete(Movie movie) {
+    public boolean delete(Movie movie) throws DatabaseException, MovieNotFoundException {
 
         String sql = "DELETE FROM movies WHERE title = ? AND genre = ? AND release_year = ?;";
 
         try (
                 Connection connection = DatabaseUtil.getConnection();
                 PreparedStatement preparedStatement = connection.prepareStatement(sql)
-                ) {
+        ) {
 
             preparedStatement.setString(1, movie.getTitle());
             preparedStatement.setString(2, movie.getGenre());
@@ -78,23 +80,25 @@ public class MovieRepository {
 
             int rowsAffected = preparedStatement.executeUpdate();
 
-            return rowsAffected > 0;
+            if (rowsAffected == 0) {
+                throw new MovieNotFoundException("Movie not found for deletion");
+            }
+
+            return true;
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new DatabaseException("Failed to delete movie", e);
         }
-
-        return false;
     }
 
-    public boolean update(Movie movie) {
+    public boolean update(Movie movie) throws DatabaseException, MovieNotFoundException {
 
         String sql = "UPDATE movies SET title = ?, genre = ?, release_year = ? WHERE id = ?;";
 
         try (
                 Connection connection = DatabaseUtil.getConnection();
                 PreparedStatement preparedStatement = connection.prepareStatement(sql)
-                ) {
+        ) {
 
             preparedStatement.setString(1, movie.getTitle());
             preparedStatement.setString(2, movie.getGenre());
@@ -103,13 +107,15 @@ public class MovieRepository {
 
             int rowsAffected = preparedStatement.executeUpdate();
 
-            return rowsAffected > 0;
+            if (rowsAffected == 0) {
+                throw new MovieNotFoundException("Movie not found for update");
+            }
+
+            return true;
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new DatabaseException("Failed to update movie", e);
         }
-
-        return false;
     }
 
 }

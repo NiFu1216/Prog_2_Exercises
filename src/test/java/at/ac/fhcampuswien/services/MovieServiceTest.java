@@ -1,18 +1,24 @@
 package at.ac.fhcampuswien.services;
 
+import at.ac.fhcampuswien.exceptions.DatabaseException;
+import at.ac.fhcampuswien.exceptions.MovieNotFoundException;
 import at.ac.fhcampuswien.models.Movie;
+import at.ac.fhcampuswien.repositories.MovieRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class MovieServiceTest {
 
     private MovieService movieService;
+    private MovieRepository movieRepository;
     private List<Movie> movies;
 
     private Movie matrix;
@@ -34,9 +40,12 @@ class MovieServiceTest {
         movies.add(grown_ups);
         movies.add(avatar);
 
-//        movieService = new MovieService(movies);
-    }
+        // Mock repository and stub findAll()
+        movieRepository = mock(MovieRepository.class);
+        when(movieRepository.findAll()).thenReturn(movies);
 
+        movieService = new MovieService(movieRepository);
+    }
     // -------------------------
     // getAllMovies()
     // -------------------------
@@ -304,6 +313,25 @@ class MovieServiceTest {
         String id = matrix.getId().toString();
 
         boolean result = movieService.updateMovie(id, "Matrix Reloaded", "Sci-Fi", 2003);
+    @Test
+    @DisplayName("throws DatabaseException when repository delete fails")
+    void should_throw_database_exception_when_deleting_movie_with_db_error() {
+        Movie movieToDelete = new Movie("Inception", "Sci-Fi", 2010);
+
+        when(movieRepository.delete(movieToDelete)).thenThrow(new DatabaseException("DB error", new SQLException()));
+
+        assertThrows(DatabaseException.class, () -> movieService.deleteMovie(movieToDelete.getTitle(), movieToDelete.getGenre(), movieToDelete.getReleaseYear()));
+    }
+
+    @Test
+    @DisplayName("throws MovieNotFoundException when repository update reports not found")
+    void should_throw_movie_not_found_exception_when_update_fails() {
+        Movie movieToUpdate = inception;
+
+        when(movieRepository.update(movieToUpdate)).thenThrow(new MovieNotFoundException("Not found"));
+
+        assertThrows(MovieNotFoundException.class, () -> movieService.updateMovie(movieToUpdate.getId().toString(), movieToUpdate.getTitle(), movieToUpdate.getGenre(), movieToUpdate.getReleaseYear()));
+    }
 
         assertTrue(result);
         assertEquals(4, movieService.getAllMovies().size());
