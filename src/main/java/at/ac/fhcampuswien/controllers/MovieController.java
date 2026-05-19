@@ -1,8 +1,12 @@
 package at.ac.fhcampuswien.controllers;
 
 import at.ac.fhcampuswien.ApiUtils;
+import at.ac.fhcampuswien.exceptions.DatabaseException;
+import at.ac.fhcampuswien.exceptions.MovieNotFoundException;
 import at.ac.fhcampuswien.models.Movie;
+import at.ac.fhcampuswien.repositories.MovieRepository;
 import at.ac.fhcampuswien.services.MovieService;
+import com.google.gson.JsonSyntaxException;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.google.gson.Gson;
@@ -19,8 +23,7 @@ public class MovieController implements HttpHandler {
     private final Gson gson = new Gson();
 
     public MovieController() {
-        // Initialisierung des Services mit Dummy-Daten
-        this.movieService = new MovieService(Movie.generateDummyMovies());
+        this.movieService = new MovieService(new MovieRepository());
     }
 
     @Override
@@ -28,6 +31,7 @@ public class MovieController implements HttpHandler {
         String method = exchange.getRequestMethod();
         String path = exchange.getRequestURI().getPath();
 
+        try{
         switch (path) {
             case BASE + "getAll" -> handleMethod(method, "GET", exchange, () -> handleGetAllRequest(exchange));
             case BASE + "add" -> handleMethod(method, "POST", exchange, () -> handleAddRequest(exchange));
@@ -35,6 +39,16 @@ public class MovieController implements HttpHandler {
             case BASE + "update" -> handleMethod(method, "PUT", exchange, () -> handleUpdateRequest(exchange));
             case BASE + "search" -> handleMethod(method, "GET", exchange, () -> handleSearchRequest(exchange));
             default -> ApiUtils.sendResponse(exchange, 404, "{ \"error\": \"Path not found\" }");
+        }
+//added +try
+        } catch (JsonSyntaxException e) {
+            ApiUtils.sendResponse(exchange, 400, "{ \"error\": \"Malformed JSON syntax\" }");
+        } catch (MovieNotFoundException e) {
+            ApiUtils.sendResponse(exchange, 404, "{ \"error\": \"" + e.getMessage() + "\" }");
+        } catch (DatabaseException e) {
+            ApiUtils.sendResponse(exchange, 500, "{ \"error\": \"Internal Server Error: Database issue\" }");
+        } catch (Exception e) {
+            ApiUtils.sendResponse(exchange, 500, "{ \"error\": \"An unexpected error occurred\" }");
         }
     }
 

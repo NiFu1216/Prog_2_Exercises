@@ -1,9 +1,6 @@
 package at.ac.fhcampuswien.models;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 public class Movie {
 
@@ -49,6 +46,18 @@ public class Movie {
     @Override
     public String toString() {
         return "Movie{id=" + id + ", title='" + title + "', genre='" + genre + "', releaseYear=" + releaseYear + "}";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Movie movie = (Movie) o;
+        return releaseYear == movie.releaseYear && Objects.equals(id, movie.id) && Objects.equals(title, movie.title) && Objects.equals(genre, movie.genre);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, title, genre, releaseYear);
     }
 
     // Getters
