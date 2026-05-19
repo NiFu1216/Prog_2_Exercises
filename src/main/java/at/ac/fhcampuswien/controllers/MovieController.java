@@ -6,10 +6,10 @@ import at.ac.fhcampuswien.exceptions.MovieNotFoundException;
 import at.ac.fhcampuswien.models.Movie;
 import at.ac.fhcampuswien.repositories.MovieRepository;
 import at.ac.fhcampuswien.services.MovieService;
+import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import com.google.gson.Gson;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -28,121 +28,147 @@ public class MovieController implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+
         String method = exchange.getRequestMethod();
         String path = exchange.getRequestURI().getPath();
 
-        try{
-        switch (path) {
-            case BASE + "getAll" -> handleMethod(method, "GET", exchange, () -> handleGetAllRequest(exchange));
-            case BASE + "add" -> handleMethod(method, "POST", exchange, () -> handleAddRequest(exchange));
-            case BASE + "delete" -> handleMethod(method, "DELETE", exchange, () -> handleDeleteRequest(exchange));
-            case BASE + "update" -> handleMethod(method, "PUT", exchange, () -> handleUpdateRequest(exchange));
-            case BASE + "search" -> handleMethod(method, "GET", exchange, () -> handleSearchRequest(exchange));
-            default -> ApiUtils.sendResponse(exchange, 404, "{ \"error\": \"Path not found\" }");
-        }
-//added +try
+        try {
+            switch (path) {
+                case BASE + "getAll" -> handleMethod(method, "GET", exchange, () -> handleGetAllRequest(exchange));
+                case BASE + "add" -> handleMethod(method, "POST", exchange, () -> handleAddRequest(exchange));
+                case BASE + "delete" -> handleMethod(method, "DELETE", exchange, () -> handleDeleteRequest(exchange));
+                case BASE + "update" -> handleMethod(method, "PUT", exchange, () -> handleUpdateRequest(exchange));
+                case BASE + "search" -> handleMethod(method, "GET", exchange, () -> handleSearchRequest(exchange));
+                default -> ApiUtils.sendResponse(exchange, 404, "{ \"error\": \"Path not found\" }");
+            }
+
         } catch (JsonSyntaxException e) {
-            ApiUtils.sendResponse(exchange, 400, "{ \"error\": \"Malformed JSON syntax\" }");
+            ApiUtils.sendResponse(exchange, 400,
+                    "{ \"error\": \"Malformed JSON syntax\" }");
+
         } catch (MovieNotFoundException e) {
-            ApiUtils.sendResponse(exchange, 404, "{ \"error\": \"" + e.getMessage() + "\" }");
+            ApiUtils.sendResponse(exchange, 404,
+                    "{ \"error\": \"" + e.getMessage() + "\" }");
+
         } catch (DatabaseException e) {
-            ApiUtils.sendResponse(exchange, 500, "{ \"error\": \"Internal Server Error: Database issue\" }");
+            ApiUtils.sendResponse(exchange, 500,
+                    "{ \"error\": \"Internal Server Error: Database issue\" }");
+
         } catch (Exception e) {
-            ApiUtils.sendResponse(exchange, 500, "{ \"error\": \"An unexpected error occurred\" }");
+            ApiUtils.sendResponse(exchange, 500,
+                    "{ \"error\": \"An unexpected error occurred\" }");
         }
     }
 
+    // ---------------- HANDLERS ----------------
+
     private void handleGetAllRequest(HttpExchange exchange) throws IOException {
-        ApiUtils.sendResponse(exchange, 200, formatMovieResponse(movieService.getAllMovies()));
+        List<Movie> movies = movieService.getAllMovies();
+        ApiUtils.sendResponse(exchange, 200, formatMovieResponse(movies));
     }
 
     private void handleSearchRequest(HttpExchange exchange) throws IOException {
-        Map<String, String> params = ApiUtils.parseQueryParams(exchange.getRequestURI().getQuery());
+        Map<String, String> params =
+                ApiUtils.parseQueryParams(exchange.getRequestURI().getQuery());
+
         String title = params.get("title");
         String genre = params.get("genre");
-        Integer year = params.containsKey("releaseYear") ? Integer.parseInt(params.get("releaseYear")) : null;
+        Integer year = params.containsKey("releaseYear")
+                ? Integer.parseInt(params.get("releaseYear"))
+                : null;
 
         List<Movie> results = movieService.searchMovies(title, genre, year);
         ApiUtils.sendResponse(exchange, 200, formatMovieResponse(results));
     }
 
     private void handleAddRequest(HttpExchange exchange) throws IOException {
+
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
 
-        try {
-            Movie movie = gson.fromJson(body, Movie.class);
+        Movie movie = gson.fromJson(body, Movie.class);
 
-            if (movie == null || movie.getTitle() == null || movie.getGenre() == null || movie.getReleaseYear() <= 0) {
-                ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"The request body is malformed\" }");
-                return;
-            }
+        if (movie == null || movie.getTitle() == null ||
+                movie.getGenre() == null || movie.getReleaseYear() <= 0) {
 
-            if (movieService.addMovie(new Movie(movie.getTitle(), movie.getGenre(), movie.getReleaseYear()))) {
-                ApiUtils.sendResponse(exchange, 201, "{ \"message\": \"Movie added successfully\" }");
-            } else {
-                ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"Movie already exists\" }");
-            }
-        } catch (Exception e) {
-            ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"The request body is malformed\" }");
+            ApiUtils.sendResponse(exchange, 400,
+                    "{ \"error\": \"Invalid movie data\" }");
+            return;
+        }
+
+        boolean success = movieService.addMovie(
+                new Movie(movie.getTitle(), movie.getGenre(), movie.getReleaseYear())
+        );
+
+        if (success) {
+            ApiUtils.sendResponse(exchange, 201,
+                    "{ \"message\": \"Movie added successfully\" }");
+        } else {
+            ApiUtils.sendResponse(exchange, 400,
+                    "{ \"message\": \"Movie already exists\" }");
         }
     }
 
     private void handleDeleteRequest(HttpExchange exchange) throws IOException {
+
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
 
-        try {
-            Movie movie = gson.fromJson(body, Movie.class);
+        Movie movie = gson.fromJson(body, Movie.class);
 
-            if (movie == null || movie.getTitle() == null || movie.getGenre() == null || movie.getReleaseYear() <= 0) {
-                ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie not found\" }");
-                return;
-            }
+        if (movieService.deleteMovie(
+                movie.getTitle(),
+                movie.getGenre(),
+                movie.getReleaseYear())) {
 
-            if (movieService.deleteMovie(movie.getTitle(), movie.getGenre(), movie.getReleaseYear())) {
-                ApiUtils.sendResponse(exchange, 200, "{ \"message\": \"Movie deleted successfully\" }");
-            } else {
-                ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie not found\" }");
-            }
-        } catch (Exception e) {
-            ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie not found\" }");
+            ApiUtils.sendResponse(exchange, 200,
+                    "{ \"message\": \"Movie deleted successfully\" }");
+
+        } else {
+            ApiUtils.sendResponse(exchange, 404,
+                    "{ \"message\": \"Movie not found\" }");
         }
     }
 
     private void handleUpdateRequest(HttpExchange exchange) throws IOException {
+
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
 
-        try {
-            Movie movie = gson.fromJson(body, Movie.class);
+        Movie movie = gson.fromJson(body, Movie.class);
 
-            if (movie == null || movie.getId() == null || movie.getTitle() == null || movie.getGenre() == null || movie.getReleaseYear() <= 0) {
-                ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie to be updated not found\" }");
-                return;
-            }
+        if (movieService.updateMovie(
+                movie.getId().toString(),
+                movie.getTitle(),
+                movie.getGenre(),
+                movie.getReleaseYear())) {
 
-            if (movieService.updateMovie(movie.getId().toString(), movie.getTitle(), movie.getGenre(), movie.getReleaseYear())) {
-                ApiUtils.sendResponse(exchange, 200, "{ \"message\": \"Movie updated successfully\" }");
-            } else {
-                ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie to be updated not found\" }");
-            }
-        } catch (Exception e) {
-            ApiUtils.sendResponse(exchange, 404, "{ \"message\": \"Movie to be updated not found\" }");
+            ApiUtils.sendResponse(exchange, 200,
+                    "{ \"message\": \"Movie updated successfully\" }");
+
+        } else {
+            ApiUtils.sendResponse(exchange, 404,
+                    "{ \"message\": \"Movie not found\" }");
         }
     }
 
-    // --- Hilfsmethoden für Parsing und JSON-Formatierung ---
+    // ---------------- HELPERS ----------------
 
     private String formatMovieResponse(List<Movie> movieList) {
         return gson.toJson(Map.of("movies", movieList));
     }
 
-    private void handleMethod(String actual, String expected, HttpExchange ex, RequestAction action) throws IOException {
+    private void handleMethod(String actual, String expected,
+                              HttpExchange ex, RequestAction action) throws IOException {
+
         if (!actual.equals(expected)) {
-            ApiUtils.sendResponse(ex, 405, "{ \"error\": \"Method not allowed\" }");
+            ApiUtils.sendResponse(ex, 405,
+                    "{ \"error\": \"Method not allowed\" }");
             return;
         }
+
         action.execute();
     }
 
-    @FunctionalInterface private interface RequestAction { void execute() throws IOException; }
-
+    @FunctionalInterface
+    private interface RequestAction {
+        void execute() throws IOException;
+    }
 }
