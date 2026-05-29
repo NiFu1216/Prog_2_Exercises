@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class MovieRepository {
+public class MovieRepository implements IMovieRepository {
 
     public void add(Movie movie) throws DatabaseException {
 
