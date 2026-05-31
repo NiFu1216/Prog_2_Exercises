@@ -3,6 +3,7 @@ package at.ac.fhcampuswien.services;
 import at.ac.fhcampuswien.exceptions.DatabaseException;
 import at.ac.fhcampuswien.exceptions.MovieNotFoundException;
 import at.ac.fhcampuswien.models.Movie;
+import at.ac.fhcampuswien.models.MovieFactory;
 import at.ac.fhcampuswien.repositories.IMovieRepository; // NEU: Interface importieren!
 
 import java.util.ArrayList;
@@ -54,13 +55,15 @@ public class MovieService {
     }
     // REFACTORED: Altes Stream-Parsing LÖSCHEN. Das Repository wirft jetzt die Fehler selbst!
     public boolean deleteMovie(String title, String genre, int year) throws DatabaseException, MovieNotFoundException {
-        Movie movieToDelete = new Movie(title, genre, year);
+        // Create the Movie instance through the factory for consistency.
+        Movie movieToDelete = MovieFactory.create(title, genre, year);
         return movieRepository.delete(movieToDelete);
     }
 
     // REFACTORED: Altes Stream-Parsing LÖSCHEN. Übergabe des befüllten Movie-Objekts direkt ans Repo.
     public boolean updateMovie(String id, String title, String genre, int year) throws DatabaseException, MovieNotFoundException {
-        Movie updatedMovie = new Movie(title, genre, year);
+        // Use factory creation for the updated movie instance.
+        Movie updatedMovie = MovieFactory.create(title, genre, year);
         updatedMovie.setID(java.util.UUID.fromString(id));
         return movieRepository.update(updatedMovie);
     }}

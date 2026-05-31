@@ -4,6 +4,7 @@ import at.ac.fhcampuswien.ApiUtils;
 import at.ac.fhcampuswien.exceptions.DatabaseException;
 import at.ac.fhcampuswien.exceptions.MovieNotFoundException;
 import at.ac.fhcampuswien.models.Movie;
+import at.ac.fhcampuswien.models.MovieFactory;
 import at.ac.fhcampuswien.repositories.MovieRepository;
 import at.ac.fhcampuswien.services.MovieService;
 import com.google.gson.Gson;
@@ -85,7 +86,8 @@ public class MovieController implements HttpHandler {
             return;
         }
 
-        if (movieService.addMovie(new Movie(movie.getTitle(), movie.getGenre(), movie.getReleaseYear()))) {
+        // Use the creational factory method rather than calling Movie constructor directly.
+        if (movieService.addMovie(MovieFactory.create(movie.getTitle(), movie.getGenre(), movie.getReleaseYear()))) {
             ApiUtils.sendResponse(exchange, 201, "{ \"message\": \"Movie added successfully\" }");
         } else {
             ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"Movie already exists\" }");

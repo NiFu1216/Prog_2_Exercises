@@ -2,6 +2,7 @@ package at.ac.fhcampuswien;
 
 import at.ac.fhcampuswien.controllers.MovieController;
 import at.ac.fhcampuswien.models.Movie;
+import at.ac.fhcampuswien.models.MovieFactory;
 import at.ac.fhcampuswien.repositories.IMovieRepository;
 import at.ac.fhcampuswien.repositories.MovieRepository;
 import at.ac.fhcampuswien.services.MovieService;
@@ -59,12 +60,13 @@ public class Main {
 
         /*
         MovieService movieService = new MovieService(new MovieRepository());
-        Movie grown_ups = new Movie("Grown Ups", "Comedy", 1990);
+        // Create Movie instances through the factory to keep creation logic centralized.
+        Movie grown_ups = MovieFactory.create("Grown Ups", "Comedy", 1990);
 
         System.out.println("Movies:");
         System.out.println(movieService.getAllMovies());
 
-        movieService.addMovie(new Movie("Inception", "Sci-Fi", 1990));
+        movieService.addMovie(MovieFactory.create("Inception", "Sci-Fi", 1990));
         movieService.addMovie(grown_ups);
         System.out.println("Added 2 movies:");
         System.out.println(movieService.getAllMovies());

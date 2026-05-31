@@ -37,7 +37,8 @@ public class Movie {
                 "Thriller", "Horror", "Fantasy", "Adventure", "Romance", "Anime"};
 
         for (int i = 0; i < titles.length; i++) {
-            movies.add(new Movie(titles[i], genres[i / 2], new Random().nextInt(1960, 2026)));
+            // Use the MovieFactory to create Movie objects instead of calling the constructor directly.
+            movies.add(MovieFactory.create(titles[i], genres[i / 2], new Random().nextInt(1960, 2026)));
         }
 
         return movies;
