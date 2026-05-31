@@ -8,7 +8,6 @@ import at.ac.fhcampuswien.repositories.IMovieRepository; // NEU: Interface impor
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import at.ac.fhcampuswien.repositories.MovieRepository;
 
 public class MovieService {
     //MovieRepository in IMovieRepository gewchselt
@@ -68,29 +67,35 @@ public class MovieService {
     /*public boolean deleteMovie(String title, String genre, int year) {
         List<Movie> movies = movieRepository.findAll();
 
-        return movies.stream()
+        Movie movieToDelete = movies.stream()
                 .filter(m ->
-                    m.getTitle().equalsIgnoreCase(title) &&
-                    m.getGenre().equalsIgnoreCase(genre) &&
-                    m.getReleaseYear() == year)
+                        m.getTitle().equalsIgnoreCase(title) &&
+                                m.getGenre().equalsIgnoreCase(genre) &&
+                                m.getReleaseYear() == year)
                 .findFirst()
-                .map(movieRepository::delete)
-                .orElse(false);
+                .orElseThrow(() ->
+                        new MovieNotFoundException("Movie not found for deletion"));
+
+        return movieRepository.delete(movieToDelete);
     }
 
-    // Update basierend auf ID und neuen Daten
-    public boolean updateMovie(String id, String title, String genre, int year) {
+    // ---------------- UPDATE ----------------
+    public boolean updateMovie(String id, String title, String genre, int year)
+            throws DatabaseException, MovieNotFoundException {
+
         List<Movie> movies = movieRepository.findAll();
 
-        return movies.stream()
+        Movie movieToUpdate = movies.stream()
                 .filter(m -> m.getId().toString().equals(id))
                 .findFirst()
-                .map(m -> {
-                    m.setTitle(title);
-                    m.setGenre(genre);
-                    m.setReleaseYear(year);
-                    return movieRepository.update(m);
-                }).orElse(false);
+                .orElseThrow(() ->
+                        new MovieNotFoundException("Movie not found for update"));
+
+        movieToUpdate.setTitle(title);
+        movieToUpdate.setGenre(genre);
+        movieToUpdate.setReleaseYear(year);
+
+        return movieRepository.update(movieToUpdate);
     }
 }
 

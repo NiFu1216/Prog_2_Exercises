@@ -6,10 +6,10 @@ import at.ac.fhcampuswien.exceptions.MovieNotFoundException;
 import at.ac.fhcampuswien.models.Movie;
 import at.ac.fhcampuswien.repositories.MovieRepository;
 import at.ac.fhcampuswien.services.MovieService;
+import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import com.google.gson.Gson;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -28,19 +28,20 @@ public class MovieController implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+
         String method = exchange.getRequestMethod();
         String path = exchange.getRequestURI().getPath();
 
-        try{
-        switch (path) {
-            case BASE + "getAll" -> handleMethod(method, "GET", exchange, () -> handleGetAllRequest(exchange));
-            case BASE + "add" -> handleMethod(method, "POST", exchange, () -> handleAddRequest(exchange));
-            case BASE + "delete" -> handleMethod(method, "DELETE", exchange, () -> handleDeleteRequest(exchange));
-            case BASE + "update" -> handleMethod(method, "PUT", exchange, () -> handleUpdateRequest(exchange));
-            case BASE + "search" -> handleMethod(method, "GET", exchange, () -> handleSearchRequest(exchange));
-            default -> ApiUtils.sendResponse(exchange, 404, "{ \"error\": \"Path not found\" }");
-        }
-//added +try
+        try {
+            switch (path) {
+                case BASE + "getAll" -> handleMethod(method, "GET", exchange, () -> handleGetAllRequest(exchange));
+                case BASE + "add" -> handleMethod(method, "POST", exchange, () -> handleAddRequest(exchange));
+                case BASE + "delete" -> handleMethod(method, "DELETE", exchange, () -> handleDeleteRequest(exchange));
+                case BASE + "update" -> handleMethod(method, "PUT", exchange, () -> handleUpdateRequest(exchange));
+                case BASE + "search" -> handleMethod(method, "GET", exchange, () -> handleSearchRequest(exchange));
+                default -> ApiUtils.sendResponse(exchange, 404, "{ \"error\": \"Path not found\" }");
+            }
+
         } catch (JsonSyntaxException e) {
             ApiUtils.sendResponse(exchange, 400, "{ \"error\": \"Malformed JSON syntax\" }");
         } catch (UncheckedExceptionWrapper e) {
@@ -54,7 +55,8 @@ public class MovieController implements HttpHandler {
                 ApiUtils.sendResponse(exchange, 500, "{ \"error\": \"An unexpected server error occurred\" }");
             }
         } catch (Exception e) {
-            ApiUtils.sendResponse(exchange, 500, "{ \"error\": \"An unexpected error occurred\" }");
+            ApiUtils.sendResponse(exchange, 500,
+                    "{ \"error\": \"An unexpected error occurred\" }");
         }
     }
 
@@ -66,7 +68,9 @@ public class MovieController implements HttpHandler {
         Map<String, String> params = ApiUtils.parseQueryParams(exchange.getRequestURI().getQuery());
         String title = params.get("title");
         String genre = params.get("genre");
-        Integer year = params.containsKey("releaseYear") ? Integer.parseInt(params.get("releaseYear")) : null;
+        Integer year = params.containsKey("releaseYear")
+                ? Integer.parseInt(params.get("releaseYear"))
+                : null;
 
         List<Movie> results = movieService.searchMovies(title, genre, year);
         ApiUtils.sendResponse(exchange, 200, formatMovieResponse(results));
@@ -113,7 +117,7 @@ public class MovieController implements HttpHandler {
         ApiUtils.sendResponse(exchange, 200, "{ \"message\": \"Movie updated successfully\" }");
     }
 
-    // --- Hilfsmethoden für Parsing und JSON-Formatierung ---
+    // ---------------- HELPERS ----------------
 
     private String formatMovieResponse(List<Movie> movieList) {
         return gson.toJson(Map.of("movies", movieList));
@@ -121,7 +125,8 @@ public class MovieController implements HttpHandler {
 
     private void handleMethod(String actual, String expected, HttpExchange ex, RequestAction action) throws IOException, MovieNotFoundException, DatabaseException {
         if (!actual.equals(expected)) {
-            ApiUtils.sendResponse(ex, 405, "{ \"error\": \"Method not allowed\" }");
+            ApiUtils.sendResponse(ex, 405,
+                    "{ \"error\": \"Method not allowed\" }");
             return;
         }
         try {

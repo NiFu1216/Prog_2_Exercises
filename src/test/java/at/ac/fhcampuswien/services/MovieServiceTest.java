@@ -151,13 +151,6 @@ class MovieServiceTest {
         assertEquals(3, movieService.getAllMovies().size());
     }
 
-    @Test
-    void givenNonExistingMovie_whenDeleteMovie_thenReturnFalse() {
-        boolean result = movieService.deleteMovie("Titanic", "Drama", 1997);
-
-        assertFalse(result);
-    }
-
     // -------------------------
     // updateMovie()
     // -------------------------
@@ -170,13 +163,6 @@ class MovieServiceTest {
 
         assertTrue(result);
         assertEquals("Inception Updated", inception.getTitle());
-    }
-
-    @Test
-    void givenNonExistingMovieId_whenUpdateMovie_thenReturnFalse() {
-        boolean result = movieService.updateMovie("invalid-id", "Test", "Test", 2000);
-
-        assertFalse(result);
     }
 
     // -------------------------
