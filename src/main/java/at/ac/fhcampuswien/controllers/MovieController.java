@@ -43,34 +43,29 @@ public class MovieController implements HttpHandler {
             }
 
         } catch (JsonSyntaxException e) {
-            ApiUtils.sendResponse(exchange, 400,
-                    "{ \"error\": \"Malformed JSON syntax\" }");
-
-        } catch (MovieNotFoundException e) {
-            ApiUtils.sendResponse(exchange, 404,
-                    "{ \"error\": \"" + e.getMessage() + "\" }");
-
-        } catch (DatabaseException e) {
-            ApiUtils.sendResponse(exchange, 500,
-                    "{ \"error\": \"Internal Server Error: Database issue\" }");
-
+            ApiUtils.sendResponse(exchange, 400, "{ \"error\": \"Malformed JSON syntax\" }");
+        } catch (UncheckedExceptionWrapper e) {
+            // Hier entpacken wir die getunnelten Checked Exceptions wieder
+            Throwable originalException = e.getCause();
+            if (originalException instanceof MovieNotFoundException) {
+                ApiUtils.sendResponse(exchange, 404, "{ \"error\": \"" + originalException.getMessage() + "\" }");
+            } else if (originalException instanceof DatabaseException) {
+                ApiUtils.sendResponse(exchange, 500, "{ \"error\": \"Internal Server Error: Database issue\" }");
+            } else {
+                ApiUtils.sendResponse(exchange, 500, "{ \"error\": \"An unexpected server error occurred\" }");
+            }
         } catch (Exception e) {
             ApiUtils.sendResponse(exchange, 500,
                     "{ \"error\": \"An unexpected error occurred\" }");
         }
     }
 
-    // ---------------- HANDLERS ----------------
-
-    private void handleGetAllRequest(HttpExchange exchange) throws IOException {
-        List<Movie> movies = movieService.getAllMovies();
-        ApiUtils.sendResponse(exchange, 200, formatMovieResponse(movies));
+    private void handleGetAllRequest(HttpExchange exchange) throws IOException, DatabaseException {
+        ApiUtils.sendResponse(exchange, 200, formatMovieResponse(movieService.getAllMovies()));
     }
 
-    private void handleSearchRequest(HttpExchange exchange) throws IOException {
-        Map<String, String> params =
-                ApiUtils.parseQueryParams(exchange.getRequestURI().getQuery());
-
+    private void handleSearchRequest(HttpExchange exchange) throws IOException,DatabaseException {
+        Map<String, String> params = ApiUtils.parseQueryParams(exchange.getRequestURI().getQuery());
         String title = params.get("title");
         String genre = params.get("genre");
         Integer year = params.containsKey("releaseYear")
@@ -81,72 +76,45 @@ public class MovieController implements HttpHandler {
         ApiUtils.sendResponse(exchange, 200, formatMovieResponse(results));
     }
 
-    private void handleAddRequest(HttpExchange exchange) throws IOException {
-
+    private void handleAddRequest(HttpExchange exchange) throws IOException, DatabaseException {
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-
         Movie movie = gson.fromJson(body, Movie.class);
 
-        if (movie == null || movie.getTitle() == null ||
-                movie.getGenre() == null || movie.getReleaseYear() <= 0) {
-
-            ApiUtils.sendResponse(exchange, 400,
-                    "{ \"error\": \"Invalid movie data\" }");
+        if (movie == null || movie.getTitle() == null || movie.getGenre() == null || movie.getReleaseYear() <= 0) {
+            ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"The request body is malformed\" }");
             return;
         }
 
-        boolean success = movieService.addMovie(
-                new Movie(movie.getTitle(), movie.getGenre(), movie.getReleaseYear())
-        );
-
-        if (success) {
-            ApiUtils.sendResponse(exchange, 201,
-                    "{ \"message\": \"Movie added successfully\" }");
+        if (movieService.addMovie(new Movie(movie.getTitle(), movie.getGenre(), movie.getReleaseYear()))) {
+            ApiUtils.sendResponse(exchange, 201, "{ \"message\": \"Movie added successfully\" }");
         } else {
-            ApiUtils.sendResponse(exchange, 400,
-                    "{ \"message\": \"Movie already exists\" }");
+            ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"Movie already exists\" }");
         }
     }
-
-    private void handleDeleteRequest(HttpExchange exchange) throws IOException {
-
+    private void handleDeleteRequest(HttpExchange exchange) throws IOException, DatabaseException, MovieNotFoundException {
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-
         Movie movie = gson.fromJson(body, Movie.class);
 
-        if (movieService.deleteMovie(
-                movie.getTitle(),
-                movie.getGenre(),
-                movie.getReleaseYear())) {
-
-            ApiUtils.sendResponse(exchange, 200,
-                    "{ \"message\": \"Movie deleted successfully\" }");
-
-        } else {
-            ApiUtils.sendResponse(exchange, 404,
-                    "{ \"message\": \"Movie not found\" }");
+        if (movie == null || movie.getTitle() == null || movie.getGenre() == null || movie.getReleaseYear() <= 0) {
+            ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"Invalid movie data supplied\" }");
+            return;
         }
+
+        movieService.deleteMovie(movie.getTitle(), movie.getGenre(), movie.getReleaseYear());
+        ApiUtils.sendResponse(exchange, 200, "{ \"message\": \"Movie deleted successfully\" }");
     }
 
-    private void handleUpdateRequest(HttpExchange exchange) throws IOException {
-
+    private void handleUpdateRequest(HttpExchange exchange) throws IOException, DatabaseException, MovieNotFoundException {
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-
         Movie movie = gson.fromJson(body, Movie.class);
 
-        if (movieService.updateMovie(
-                movie.getId().toString(),
-                movie.getTitle(),
-                movie.getGenre(),
-                movie.getReleaseYear())) {
-
-            ApiUtils.sendResponse(exchange, 200,
-                    "{ \"message\": \"Movie updated successfully\" }");
-
-        } else {
-            ApiUtils.sendResponse(exchange, 404,
-                    "{ \"message\": \"Movie not found\" }");
+        if (movie == null || movie.getId() == null || movie.getTitle() == null || movie.getGenre() == null || movie.getReleaseYear() <= 0) {
+            ApiUtils.sendResponse(exchange, 400, "{ \"message\": \"Missing or invalid update data\" }");
+            return;
         }
+
+        movieService.updateMovie(movie.getId().toString(), movie.getTitle(), movie.getGenre(), movie.getReleaseYear());
+        ApiUtils.sendResponse(exchange, 200, "{ \"message\": \"Movie updated successfully\" }");
     }
 
     // ---------------- HELPERS ----------------
@@ -155,20 +123,28 @@ public class MovieController implements HttpHandler {
         return gson.toJson(Map.of("movies", movieList));
     }
 
-    private void handleMethod(String actual, String expected,
-                              HttpExchange ex, RequestAction action) throws IOException {
-
+    private void handleMethod(String actual, String expected, HttpExchange ex, RequestAction action) throws IOException, MovieNotFoundException, DatabaseException {
         if (!actual.equals(expected)) {
             ApiUtils.sendResponse(ex, 405,
                     "{ \"error\": \"Method not allowed\" }");
             return;
         }
-
-        action.execute();
+        try {
+            action.execute();
+        } catch (Exception e) {
+            // Tunneling der Checked Exception via UncheckedExceptionWrapper
+            throw new UncheckedExceptionWrapper(e);
+        }
     }
 
     @FunctionalInterface
     private interface RequestAction {
-        void execute() throws IOException;
+        void execute() throws Exception;
+    }
+    // Hilfsklasse zum Tunneln der Exceptions
+    private static class UncheckedExceptionWrapper extends RuntimeException {
+        public UncheckedExceptionWrapper(Throwable cause) {
+            super(cause);
+        }
     }
 }
