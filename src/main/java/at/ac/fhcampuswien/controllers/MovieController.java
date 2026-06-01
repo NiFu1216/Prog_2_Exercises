@@ -30,16 +30,15 @@ public class MovieController implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
 
-        String method = exchange.getRequestMethod();
         String path = exchange.getRequestURI().getPath();
 
         try {
             switch (path) {
-                case BASE + "getAll" -> handleMethod(method, "GET", exchange, () -> handleGetAllRequest(exchange));
-                case BASE + "add" -> handleMethod(method, "POST", exchange, () -> handleAddRequest(exchange));
-                case BASE + "delete" -> handleMethod(method, "DELETE", exchange, () -> handleDeleteRequest(exchange));
-                case BASE + "update" -> handleMethod(method, "PUT", exchange, () -> handleUpdateRequest(exchange));
-                case BASE + "search" -> handleMethod(method, "GET", exchange, () -> handleSearchRequest(exchange));
+                case BASE + "getAll" -> handleGetAllRequest(exchange);
+                case BASE + "add" -> handleAddRequest(exchange);
+                case BASE + "delete" -> handleDeleteRequest(exchange);
+                case BASE + "update" -> handleUpdateRequest(exchange);
+                case BASE + "search" -> handleSearchRequest(exchange);
                 default -> ApiUtils.sendResponse(exchange, 404, "{ \"error\": \"Path not found\" }");
             }
 
@@ -123,25 +122,6 @@ public class MovieController implements HttpHandler {
 
     private String formatMovieResponse(List<Movie> movieList) {
         return gson.toJson(Map.of("movies", movieList));
-    }
-
-    private void handleMethod(String actual, String expected, HttpExchange ex, RequestAction action) throws IOException, MovieNotFoundException, DatabaseException {
-        if (!actual.equals(expected)) {
-            ApiUtils.sendResponse(ex, 405,
-                    "{ \"error\": \"Method not allowed\" }");
-            return;
-        }
-        try {
-            action.execute();
-        } catch (Exception e) {
-            // Tunneling der Checked Exception via UncheckedExceptionWrapper
-            throw new UncheckedExceptionWrapper(e);
-        }
-    }
-
-    @FunctionalInterface
-    private interface RequestAction {
-        void execute() throws Exception;
     }
     // Hilfsklasse zum Tunneln der Exceptions
     private static class UncheckedExceptionWrapper extends RuntimeException {
