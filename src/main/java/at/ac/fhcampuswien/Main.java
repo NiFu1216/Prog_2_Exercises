@@ -2,6 +2,8 @@ package at.ac.fhcampuswien;
 
 import at.ac.fhcampuswien.controllers.MovieController;
 import at.ac.fhcampuswien.models.Movie;
+import at.ac.fhcampuswien.models.MovieFactory;
+import at.ac.fhcampuswien.repositories.IMovieRepository;
 import at.ac.fhcampuswien.repositories.MovieRepository;
 import at.ac.fhcampuswien.services.MovieService;
 import at.ac.fhcampuswien.utils.DatabaseUtil;
@@ -10,6 +12,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.List;
 
 public class Main {
     private final static int SERVER_PORT = 8080;
@@ -29,16 +32,41 @@ public class Main {
         server.start();
         System.out.printf("Server is running on http://localhost:%d", SERVER_PORT);
 
+// befüllt deine Datenbank beim Starten automatisch mit Testdaten, sorgt aber gleichzeitig dafür, dass keine doppelten Filme entstehen.
+        try {
+            IMovieRepository repo = new MovieRepository();
+            MovieService movieService = new MovieService(repo);
+
+           //Überprüfe Dummy-Filme in H2-Datenbank
+            List<Movie> dummyMovies = Movie.generateDummyMovies();
+            int eingefuegteFilme = 0;
+
+            for (Movie m : dummyMovies) {
+                // addMovie prüft über deinen Stream bereits sauber auf Duplikate!
+                if (movieService.addMovie(m)) {
+                    eingefuegteFilme++;
+                }
+            }
+
+            if (eingefuegteFilme > 0) {
+                System.out.printf("%d neue Dummy-Filme erfolgreich in H2-Datenbank gespeichert!%n", eingefuegteFilme);
+            } else {
+                System.out.println("Alle 20 Dummy-Filme existieren bereits in der Datenbank.");
+            }
+        } catch (Exception e) {
+            System.err.println("Fehler beim automatischen DB-Befüllen: " + e.getMessage());
+        }
         // Testing the Database
 
         /*
         MovieService movieService = new MovieService(new MovieRepository());
-        Movie grown_ups = new Movie("Grown Ups", "Comedy", 1990);
+        // Create Movie instances through the factory to keep creation logic centralized.
+        Movie grown_ups = MovieFactory.create("Grown Ups", "Comedy", 1990);
 
         System.out.println("Movies:");
         System.out.println(movieService.getAllMovies());
 
-        movieService.addMovie(new Movie("Inception", "Sci-Fi", 1990));
+        movieService.addMovie(MovieFactory.create("Inception", "Sci-Fi", 1990));
         movieService.addMovie(grown_ups);
         System.out.println("Added 2 movies:");
         System.out.println(movieService.getAllMovies());

@@ -1,5 +1,7 @@
 package at.ac.fhcampuswien.utils;
 
+import at.ac.fhcampuswien.exceptions.DatabaseException;
+
 import java.sql.*;
 
 public class DatabaseUtil {
@@ -7,6 +9,7 @@ public class DatabaseUtil {
     private static final String JDBC_URL = "jdbc:h2:~/MovieDB";
     private static final String USER = "user";
     private static final String PASSWORD = "pw";
+
 
     public static void initializeDatabase() {
 
@@ -25,7 +28,7 @@ public class DatabaseUtil {
                 preparedStatement.executeUpdate();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new DatabaseException("Failed to initialize database schema", e);    //e.printStackTrace();  was changed
         }
     }
 

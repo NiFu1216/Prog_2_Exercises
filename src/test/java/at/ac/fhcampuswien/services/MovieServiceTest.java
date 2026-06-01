@@ -28,7 +28,7 @@ class MovieServiceTest {
     private Movie avatar;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws MovieNotFoundException {
         movies = new ArrayList<>();
 
         matrix = new Movie("The Matrix", "Sci-Fi", 1999);
@@ -64,7 +64,22 @@ class MovieServiceTest {
         });
 
         // ---- UPDATE ----
-        when(movieRepository.update(any(Movie.class))).thenReturn(true);
+        when(movieRepository.update(any(Movie.class))).thenAnswer(invocation -> {
+            Movie updated = invocation.getArgument(0);
+
+            for (int i = 0; i < movies.size(); i++) {
+                Movie current = movies.get(i);
+
+                if (current.getId().equals(updated.getId())) {
+                    current.setTitle(updated.getTitle());
+                    current.setGenre(updated.getGenre());
+                    current.setReleaseYear(updated.getReleaseYear());
+                    return true;
+                }
+            }
+
+            throw new MovieNotFoundException("Movie not found");
+        });
 
         movieService = new MovieService(movieRepository);
     }
@@ -144,7 +159,7 @@ class MovieServiceTest {
     // -------------------------
 
     @Test
-    void givenExistingMovie_whenDeleteMovie_thenMovieIsRemoved() {
+    void givenExistingMovie_whenDeleteMovie_thenMovieIsRemoved() throws MovieNotFoundException {
         boolean result = movieService.deleteMovie("Avatar", "Action", 2009);
 
         assertTrue(result);
@@ -156,7 +171,7 @@ class MovieServiceTest {
     // -------------------------
 
     @Test
-    void givenExistingMovieId_whenUpdateMovie_thenMovieIsUpdated() {
+    void givenExistingMovieId_whenUpdateMovie_thenMovieIsUpdated() throws MovieNotFoundException {
         String id = inception.getId().toString();
 
         boolean result = movieService.updateMovie(id, "Inception Updated", "Thriller", 2011);
@@ -170,7 +185,7 @@ class MovieServiceTest {
     // -------------------------
 
     @Test
-    void should_throw_database_exception_when_delete_fails() {
+    void should_throw_database_exception_when_delete_fails() throws MovieNotFoundException {
         Movie m = new Movie("X", "Y", 2000);
 
         when(movieRepository.findAll()).thenReturn(List.of(m));
@@ -183,7 +198,7 @@ class MovieServiceTest {
     }
 
     @Test
-    void should_throw_movie_not_found_exception_when_update_fails() {
+    void should_throw_movie_not_found_exception_when_update_fails() throws MovieNotFoundException {
         Movie m = inception;
 
         when(movieRepository.update(any(Movie.class)))
